@@ -12,8 +12,12 @@
 	   var map;
 	  
 	  require(["esri/Map",
+      "esri/layers/OpenStreetMapLayer",
       "esri/views/MapView",
+      "esri/views/SceneView",
       "esri/layers/ArcGISDynamicLayer",
+      "esri/widgets/Home",
+      "esri/widgets/Home/HomeViewModel",
 		  "dojo/parser", "dojo/dom-style",
 	      "dojo/on", 
 	      "dojo/dom",
@@ -27,33 +31,11 @@
 	        "esri/Color",
 	   
 		  "dijit/layout/BorderContainer", "dijit/layout/ContentPane",
-	      "dojo/domReady!"], function(Map, MapView, ArcGISDynamicLayer, parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
-			  SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
+	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, Home, HomeVM, 
+          parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
+          SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
 
-          // Wire UI Events
-          on(dom.byId("btnStreets"),"click", function() { 
-            map.basemap = "streets";
-          });
-          on(dom.byId("btnSatellite"),"click", function() { 
-            map.basemap = "satellite";
-          });
-          on(dom.byId("btnHybrid"),"click", function() { 
-            map.basemap = "hybrid";
-          });
-          on(dom.byId("btnTopo"),"click", function() { 
-            map.basemap = "topo";
-          });
-          on(dom.byId("btnGray"),"click", function() { 
-            map.basemap = "gray";
-          });
-          on(dom.byId("btnNatGeo"),"click", function() { 
-            map.basemap = "national-geographic";
-          });	
-		  
-		  
-		  
-		  console.log("init called: " + parser);
-		
+
 		// var infoWindow = new InfoWindowLite(null, domConstruct.create("div", null, null, map.root));
   //       infoWindow.startup();
   //       map.setInfoWindow(infoWindow);
@@ -64,13 +46,13 @@
 
   //       // create a renderer for the states layer to override default symbology
         // var trailColor = new Color("#00FF00");
-        var trailLine = new SimpleLineSymbol({style: "solid", color: "#00FF00", width: 2.5});
+        // var trailLine = new SimpleLineSymbol({style: "solid", color: "#00FF00", width: 2.5});
         // var trailSymbol = new SimpleFillSymbol({"style": "none", trailLine, null);
         // var trailRenderer = new SimpleRenderer(trailSymbol);
         
 
         var trailRenderer = new SimpleRenderer({
-          symbol: trailLine,
+          symbol: new SimpleLineSymbol({color: "#00FF00", width: 4.5}),
           visualVariables: [{
             type: "opacityInfo",
             opacityValues: [ 0.5 ]
@@ -78,23 +60,29 @@
         });
 
         //add a layer to the map
-        var featureLayer = new FeatureLayer("http://tlcgisinter.leoncountyfl.gov/arcgis/rest/services/Public/TLC_Inter_OverlayTrailahassee_D_WM/MapServer/3", {
+        var featureLayer = new FeatureLayer({url: "http://tlcgisinter.leoncountyfl.gov/arcgis/rest/services/Public/TLC_Inter_OverlayTrailahassee_D_WM/MapServer/3",
           // mode: FeatureLayer.MODE_ONDEMAND,
           // infoTemplate:template,
        //    outFields: ["PARKNAME" , "TRAILNAME", "LOOPNAME", "MTN_BIKING"],
     		 //  showLabels: true,
     			// opacity: 0.8,
-          renderer: trailRenderer
+          renderer: trailRenderer,
+          // definitionExpression: "MTN_BIKING = 'Yes' OR BIKING = 'Yes'"
         });
-        // view.addLayer(featureLayer);
-		
-		
+
+        featureLayer.then(function() {
+          view.animateTo({
+            center: [-84.291221, 30.4343218],
+            zoom: 12,
+          });
+        });
+
       var trailTypeLayer = new ArcGISDynamicLayer({
         url: "http://tlcgisinter.leoncountyfl.gov/arcgis/rest/services/Public/TLC_Inter_OverlayTrailahassee_D_WM/MapServer",
-        visibleLayers: [2]
+        visibleLayers: [1, 2, 4],
+        showLabels: true,
+        opacity: 0.9
       });
-      // trailTypeLayer.setVisibleLayers([2], false);
-
 		  
         map = new Map({
           basemap: "topo",
@@ -103,16 +91,29 @@
 
         var view = new MapView({
           container: "mapDiv",
+          center: [-84.291221, 30.4343218],
+          zoom: 11,
           map: map 
         });
 
 
-        featureLayer.then(function() {
-          view.animateTo({
-            center: [-84.291221, 30.4343218],
-            zoom: 12,
+          // Wire UI Events
+          on(dom.byId("btnStreets"),"click", function() { 
+            map.basemap = "osm";
           });
-        });
+          on(dom.byId("btnSatellite"),"click", function() { 
+            map.basemap = "satellite";
+          });
+          on(dom.byId("btnTopo"),"click", function() { 
+            map.basemap = "topo";
+          });
+
+          var homeBtn = new Home({
+            viewModel: new HomeVM({
+              view: view
+            })
+          }, "homediv");
+          homeBtn.startup();
 
 	  });
 
@@ -129,13 +130,20 @@
 	  	padding: 0;
 	  	margin: 0;
 	  }
+
+    #homediv {
+      position: absolute;
+      top: 80px;
+      left: 15px;
+      z-index: 50;
+    }
 	  
 	  .panel-primary {
 		z-index: 100;
 		padding: 10px 10px 10px 10px;
 		position: absolute;
-		bottom: 10px;
-		left: 10px;
+		bottom: 34px;
+		left: 14px;
 		border: 1px solid #EAEAEA;
 		background: rgba(255, 255, 255, 0.5);
 	  }
@@ -157,22 +165,17 @@
  -->      <div class="panel-body">
         <div class="btn-toolbar">
           <div class="btn-group">
-            <button id="btnStreets" class="btn btn-default">Streets</button>
+            <button id="btnStreets" class="btn btn-default">Street Map</button>
             <button id="btnSatellite" class="btn btn-default">Satellite</button>
-            <button id="btnHybrid" class="btn btn-default">Hybrid</button>
-            <button id="btnTopo" class="btn btn-default">Topo</button>
-          </div>  
-        </div>
-        <div class="btn-toolbar">
-          <div class="btn-group">
-            <button id="btnGray" class="btn btn-default">Gray</button>
-            <button id="btnNatGeo" class="btn btn-default">National Geographic</button>
+            <button id="btnTopo" class="btn btn-default">Topography</button>
           </div>  
         </div>
       </div>
     </div>
 
-    <div id="mapDiv"></div>
+    <div id="mapDiv">
+      <div id="homediv"></div>
+    </div>
   </body>
 
   
