@@ -43,7 +43,6 @@
           parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
           SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
 
-
       var graphicsLayer = new GraphicsLayer();
 
       script.get("https://api.instagram.com/v1/media/search?lat=30.369776&lng=-84.273709&access_token=16384709.6ac06b4.49b97800d7fd4ac799a2c889f50f2587", {
@@ -71,14 +70,14 @@
               var pointGraphic = new Graphic({
                 geometry: point,
                 symbol: markerSymbol,
-                height: 320,
+                height: 620,
                 popupTemplate: new PopupTemplate({
                     title: "{caption}",
-                    content: "<img src='{src}' width='300' height='320'>"
+                    content: "<img src='{src}'>"
                 }),
                 attributes: {
                   caption: entry.caption.text,
-                  src: entry.images.low_resolution.url
+                  src: entry.images.thumbnail.url
                 }
               });
               graphicsLayer.add(pointGraphic);
@@ -141,6 +140,18 @@
           zoom: 11,
           map: map 
         });
+
+      view.popup.viewModel.dockOptions = {
+        //Automatically dock the popup when the constraints
+        //defined in dockAtSize are met
+        responsiveDockEnabled: true,
+        //Disables the dock button from the popup
+        dockButtonEnabled: false,
+        //Ignore the default sizes that trigger responsive docking
+        dockAtBreakpoint: false,
+        //Position the popup at the bottom left corner of the view
+        dockPosition: view.popup.viewModel.dockPositions.bottom
+      };
 
 
           // Wire UI Events
