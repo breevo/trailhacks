@@ -16,6 +16,13 @@
       "esri/views/MapView",
       "esri/views/SceneView",
       "esri/layers/ArcGISDynamicLayer",
+      "dojo/_base/array",
+      "dojo/request/script",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
+      "esri/geometry/Point",
+      "esri/symbols/SimpleMarkerSymbol",
+      "esri/PopupTemplate",
       "esri/widgets/Home",
       "esri/widgets/Home/HomeViewModel",
 		  "dojo/parser", "dojo/dom-style",
@@ -31,25 +38,66 @@
 	        "esri/Color",
 	   
 		  "dijit/layout/BorderContainer", "dijit/layout/ContentPane",
-	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, Home, HomeVM, 
+	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, array, script, GraphicsLayer,
+          Graphic, Point, SimpleMarkerSymbol, PopupTemplate, Home, HomeVM, 
           parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
           SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
 
 
-		// var infoWindow = new InfoWindowLite(null, domConstruct.create("div", null, null, map.root));
-  //       infoWindow.startup();
-  //       map.setInfoWindow(infoWindow);
+      var graphicsLayer = new GraphicsLayer();
 
-  //       var template = new InfoTemplate();
-  //       template.setTitle("<b>${TRAILNAME}</b>");
-  //       template.setContent("<p>${LOOPNAME}</p>MTB? ${MTN_BIKING}");
+      script.get("https://api.instagram.com/v1/media/search?lat=30.369776&lng=-84.273709&access_token=16384709.6ac06b4.49b97800d7fd4ac799a2c889f50f2587", {
+        jsonp: "callback"
+      }).then(function(data){
+        array.forEach(data.data, function(entry, i) {
+          if (entry.location) {
+             console.log(entry.location.latitude + " " + entry.location.longitude);    
+             
+              var point = new Point({
+                longitude: entry.location.longitude,
+                latitude: entry.location.latitude
+              });
 
-  //       // create a renderer for the states layer to override default symbology
-        // var trailColor = new Color("#00FF00");
-        // var trailLine = new SimpleLineSymbol({style: "solid", color: "#00FF00", width: 2.5});
-        // var trailSymbol = new SimpleFillSymbol({"style": "none", trailLine, null);
-        // var trailRenderer = new SimpleRenderer(trailSymbol);
-        
+              //Create a symbol for drawing the point
+              var markerSymbol = new SimpleMarkerSymbol({
+                color: [226, 119, 40],
+                outline: new SimpleLineSymbol({
+                  color: [255, 255, 255],
+                  width: 2
+                })
+              });
+
+              //Create a graphic and add the geometry and symbol to it
+              var pointGraphic = new Graphic({
+                geometry: point,
+                symbol: markerSymbol,
+                height: 320,
+                popupTemplate: new PopupTemplate({
+                    title: "{caption}",
+                    content: "<img src='{src}' width='300' height='320'>"
+                }),
+                attributes: {
+                  caption: entry.caption.text,
+                  src: entry.images.low_resolution.url
+                }
+              });
+              graphicsLayer.add(pointGraphic);
+          }
+        });
+        // Do something with the response data
+      }, function(err){
+        // Handle the error condition
+      });
+
+      
+
+        var template = new PopupTemplate({
+          title: "{TRAILNAME}",
+          content: "<p>{LOOPNAME}</p>" +
+            "<p>{TRAIL_LEN} {TRAILSURFACE}</p>" +
+            "<a href='{TRAILMAPWEBLINK}' target='_new'>Map</a> <a href='{CONTACTWEBLINK}' target='_new'>Contact</a>",
+          fieldInfos: []
+        });
 
         var trailRenderer = new SimpleRenderer({
           symbol: new SimpleLineSymbol({color: "#00FF00", width: 4.5}),
@@ -61,12 +109,10 @@
 
         //add a layer to the map
         var featureLayer = new FeatureLayer({url: "http://tlcgisinter.leoncountyfl.gov/arcgis/rest/services/Public/TLC_Inter_OverlayTrailahassee_D_WM/MapServer/3",
-          // mode: FeatureLayer.MODE_ONDEMAND,
-          // infoTemplate:template,
-       //    outFields: ["PARKNAME" , "TRAILNAME", "LOOPNAME", "MTN_BIKING"],
-    		 //  showLabels: true,
-    			// opacity: 0.8,
           renderer: trailRenderer,
+          showLabels: true,
+          outFields: ["*"],
+          popupTemplate: template
           // definitionExpression: "MTN_BIKING = 'Yes' OR BIKING = 'Yes'"
         });
 
@@ -86,7 +132,7 @@
 		  
         map = new Map({
           basemap: "topo",
-          layers: [featureLayer, trailTypeLayer]
+          layers: [featureLayer, trailTypeLayer, graphicsLayer]
         });
 
         var view = new MapView({
