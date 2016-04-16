@@ -6,11 +6,74 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.0beta3/esri/css/main.css"></p>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.0beta3/esri/css/main.css">
+    <link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/dojo/1.10.4/dojox/image/resources/Lightbox.css"> 
+
+    <style>
+      html, body, #mapDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        font-family: "Helvetica Neue", "Helvetica", "Roboto", "Arial", "sans-serif";
+      }
+      
+      .panel-heading, .panel-title {
+        padding: 0;
+        margin: 0;
+      }
+
+      #homediv {
+        position: absolute;
+        top: 80px;
+        left: 15px;
+        z-index: 50;
+      }
+      
+      #base-maps-panel {
+        z-index: 100;
+        padding: 10px 10px 10px 10px;
+        position: absolute;
+        bottom: 34px;
+        left: 14px;
+        border: 1px solid #EAEAEA;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      #integrations-panel {
+        z-index: 100;
+        padding: 10px 10px 10px 10px;
+        position: absolute;
+        bottom: 14px;
+        right: 84px;
+        border: 1px solid #EAEAEA;
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      #banner-panel {
+        z-index: 100;
+        padding: 10px 10px 10px 10px;
+        position: absolute;
+        top: 14px;
+        right: 84px;
+        width: 120px;
+        height: 44px;
+        text-align: center;
+        border: 1px solid #EAEAEA;
+        background: rgba(255, 255, 255, 0.5);
+      }
+    
+    </style>
+
   <script src="https://js.arcgis.com/4.0beta3/"></script>
+
 	<script>
-	   var map;
-	  
+    dojoConfig = {
+    isDebug: true,
+    parseOnLoad: true,
+    foo: "bar"
+    };
+
+	  var map;
+	
 	  require(["esri/Map",
       "esri/layers/OpenStreetMapLayer",
       "esri/views/MapView",
@@ -28,21 +91,23 @@
       "esri/PopupTemplate",
       "esri/widgets/Home",
       "esri/widgets/Home/HomeViewModel",
-		  "dojo/parser", "dojo/dom-style",
-	      "dojo/on", 
-	      "dojo/dom",
-          "esri/layers/FeatureLayer",
-          "esri/geometry/Extent",        
-          "dojo/dom-construct",
-	        "esri/symbols/SimpleLineSymbol",
-	        "esri/symbols/SimpleFillSymbol",
-	        "esri/symbols/TextSymbol",
-	        "esri/renderers/SimpleRenderer",
-	        "esri/Color",
-	   
-		  "dijit/layout/BorderContainer", "dijit/layout/ContentPane",
-	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, array, script, request, GraphicsLayer,
-          Graphic, Point, webMercatorUtils, SimpleMarkerSymbol, PictureMarkerSymbol, PopupTemplate, Home, HomeVM, 
+      "dojox/image/Lightbox",
+		  "dojo/parser", 
+      "dojo/dom-style",
+      "dojo/on", 
+      "dojo/dom",
+      "esri/layers/FeatureLayer",
+      "esri/geometry/Extent",        
+      "dojo/dom-construct",
+      "esri/symbols/SimpleLineSymbol",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/symbols/TextSymbol",
+      "esri/renderers/SimpleRenderer",
+      "esri/Color",
+		  "dijit/layout/BorderContainer", 
+      "dijit/layout/ContentPane",
+	    "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, array, script, request, GraphicsLayer,
+          Graphic, Point, webMercatorUtils, SimpleMarkerSymbol, PictureMarkerSymbol, PopupTemplate, Home, HomeVM, Lightbox,
           parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
           SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
 
@@ -61,11 +126,11 @@
           //evt is the event object returned after the event fires
           
           //prints the map coordinates of the clicked location
-          console.log("map point: " + evt.mapPoint.latitude + ", " + evt.mapPoint.longitude);
+          console.log("loading strava segments for: " + evt.mapPoint.latitude + ", " + evt.mapPoint.longitude);
           //prints the screen coordinates of the clicked location
-          console.log(evt.screenPoint);
+          // console.log(evt.screenPoint);
           //the graphic object if a feature is clicked in the view
-          console.log(evt.graphic);
+          // console.log(evt.graphic);
 
           if (!evt.graphic) {
             refreshStravaLayer(view, stravaLayer, evt.mapPoint.latitude, evt.mapPoint.longitude)            
@@ -78,10 +143,10 @@
 
           var searchBox = view.extent;
 
-          console.log("search box: " + searchBox.xmax + "," + searchBox.xmin + "," + searchBox.ymax + "," + searchBox.ymin);
+          // console.log("search box: " + searchBox.xmax + "," + searchBox.xmin + "," + searchBox.ymax + "," + searchBox.ymin);
           var max = webMercatorUtils.xyToLngLat(searchBox.xmax, searchBox.ymax);
           var min = webMercatorUtils.xyToLngLat(searchBox.xmin, searchBox.ymin);
-          console.log(" lat/long: " + min[1] + "," + min[0] + "," + max[1] + "," + max[0]);
+          // console.log(" lat/long: " + min[1] + "," + min[0] + "," + max[1] + "," + max[0]);
 
           script.get("https://www.strava.com/api/v3/segments/explore", {
             jsonp: "callback",
@@ -92,8 +157,7 @@
           }).then(function(data){
           array.forEach(data.segments, function(entry, i) {
           if (entry.start_latlng) {
-             console.log(entry.name, entry.start_latlng[0] + " " + entry.start_latlng[1]);    
-             
+             // console.log(entry.id + ": " + entry.name + " - " + entry.start_latlng[0] + " " + entry.start_latlng[1]);    
              addEntryToStravaLayer(entry, stravaLayer);
           }
         });
@@ -137,7 +201,7 @@
                   distance: entry.distance
                 }
               });
-              console.log("adding point: " + pointGraphic);
+              // console.log("adding point: " + pointGraphic);
               stravaLayer.add(pointGraphic);
       }
 
@@ -145,7 +209,7 @@
       stravaLayer.then(function() {
         refreshStravaLayer(view, stravaLayer, 30.277063, -84.511211);
       });
-      map.add(stravaLayer, 1);
+      map.add(stravaLayer, 0);
 
       var graphicsLayer = new GraphicsLayer();
       script.get("https://api.instagram.com/v1/media/search?lat=30.369776&lng=-84.273709&access_token=12094397.0dd4aae.b20c2c3cbbc64d25be46af513c9ae5c1", {
@@ -176,14 +240,14 @@
               var pointGraphic = new Graphic({
                 geometry: point,
                 symbol: markerSymbol,
-                height: 620,
                 popupTemplate: new PopupTemplate({
                     title: "{caption}",
-                    content: "<img src='{src}'>"
+                    content: "<a data-dojo-type='dojox.image.Lightbox' title='foo'  href='{full}'><img src='{thumb}'></a>"
                 }),
                 attributes: {
                   caption: entry.caption.text,
-                  src: entry.images.thumbnail.url
+                  thumb: entry.images.thumbnail.url,
+                  full: entry.images.standard_resolution.url
                 }
               });
               graphicsLayer.add(pointGraphic);
@@ -269,55 +333,12 @@
 	  });
 
 	</script>
-
-	<style>
-	  html, body, #mapDiv {
-	    padding: 0;
-	    margin: 0;
-	    height: 100%;
-	  }
-	  
-	  .panel-heading, .panel-title {
-	  	padding: 0;
-	  	margin: 0;
-	  }
-
-    #homediv {
-      position: absolute;
-      top: 80px;
-      left: 15px;
-      z-index: 50;
-    }
-	  
-	  #base-maps-panel {
-  		z-index: 100;
-  		padding: 10px 10px 10px 10px;
-  		position: absolute;
-  		bottom: 34px;
-  		left: 14px;
-  		border: 1px solid #EAEAEA;
-  		background: rgba(255, 255, 255, 0.5);
-	  }
-    #integrations-panel {
-      z-index: 100;
-      padding: 10px 10px 10px 10px;
-      position: absolute;
-      bottom: 14px;
-      right: 84px;
-      border: 1px solid #EAEAEA;
-      background: rgba(255, 255, 255, 0.5);
-    }
-  
-	</style>
-
-
-
 	
-    <title></title>
+    <title>Trailahassee - Trailhacks.io</title>
   </head>
 
 
-  <body class="claro">
+  <body class="tundra">
 
     <div id="base-maps-panel" class="panel panel-primary panel-fixed">
       <div class="panel-body">
@@ -338,9 +359,18 @@
       </div>
     </div>
 
+    <div id="banner-panel" class="panel panel-primary panel-fixed">
+      <div class="panel-body" style="margin-left: 40px">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500.1 250"><g fill="#000000"><path d="M0 116.8c0 14.4 11.6 26 26 26h27.5v80.8c0 14.4 11.7 26 26 26h9.7V107.1H0v9.7zM392.9 0h-35.7l-.1 89.3h35.8"></path><path d="M410.7 107.1h-71.4V0h-35.7v250h35.7V142.9h71.4V250h35.7l.1-250h-35.7M474 0h-9.7v250h9.7c14.4 0 26-11.6 26-26V26.1C500.1 11.7 488.4 0 474 0z"></path><path d="M357.1 160.7h35.7V250h-35.7zM160.7 107.1v142.5h35.7V142.9h32.7v-35.8"></path><path d="M0 53.5v35.8h107.1v160.3h35.8V89.3h86.2V53.5"></path><path d="M259.7 0H26C11.7 0 0 11.7 0 26v9.7h250V250h35.7V26c.1-14.3-11.6-26-26-26z"></path></g></svg>
+      </div>
+      trailhacks.io
+
+    </div>
+
     <div id="mapDiv">
       <div id="homediv"></div>
     </div>
+
   </body>
 
   
