@@ -18,6 +18,7 @@
       "esri/layers/ArcGISDynamicLayer",
       "dojo/_base/array",
       "dojo/request/script",
+      "dojo/request",
       "esri/layers/GraphicsLayer",
       "esri/Graphic",
       "esri/geometry/Point",
@@ -38,14 +39,75 @@
 	        "esri/Color",
 	   
 		  "dijit/layout/BorderContainer", "dijit/layout/ContentPane",
-	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, array, script, GraphicsLayer,
+	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, array, script, request, GraphicsLayer,
           Graphic, Point, SimpleMarkerSymbol, PopupTemplate, Home, HomeVM, 
           parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
           SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
 
-      var graphicsLayer = new GraphicsLayer();
+        map = new Map({
+          basemap: "topo",
+        });
 
-      script.get("https://api.instagram.com/v1/media/search?lat=30.369776&lng=-84.273709&access_token=16384709.6ac06b4.49b97800d7fd4ac799a2c889f50f2587", {
+        var view = new MapView({
+          container: "mapDiv",
+          center: [-84.291221, 30.4343218],
+          zoom: 11,
+          map: map 
+        });
+
+
+      var stravaLayer = new GraphicsLayer();
+      script.get("https://www.strava.com/api/v3/segments/explore", {
+            jsonp: "callback",
+            query: {
+                  bounds: "30.277063,-84.511211,30.589059,-84.092121",
+                  access_token: "4c4a20fc50ddcf2715f53677ee39a04957159254"
+                }
+          }).then(function(data){
+          array.forEach(data.segments, function(entry, i) {
+          if (entry.start_latlng) {
+             console.log(entry.name, entry.start_latlng[0] + " " + entry.start_latlng[1]);    
+             
+              var point = new Point({
+                latitude: entry.start_latlng[0],
+                longitude: entry.start_latlng[1]
+              });
+
+              //Create a symbol for drawing the point
+              var markerSymbol = new SimpleMarkerSymbol({
+                color: [226, 119, 40],
+                outline: new SimpleLineSymbol({
+                  color: [255, 255, 255],
+                  width: 2
+                })
+              });
+
+              //Create a graphic and add the geometry and symbol to it
+              var pointGraphic = new Graphic({
+                geometry: point,
+                symbol: markerSymbol,
+                popupTemplate: new PopupTemplate({
+                    title: "{name}",
+                    content: "Distance: {distance}"
+                }),
+                attributes: {
+                  name: entry.name,
+                  distance: entry.distance
+                }
+              });
+              console.log("adding point: " + pointGraphic);
+              stravaLayer.add(pointGraphic);
+          }
+        });
+        // Do something with the response data
+      }, function(err){
+        // Handle the error condition
+        console.log("doh " + err);
+      });
+      map.add(stravaLayer);
+
+      var graphicsLayer = new GraphicsLayer();
+      script.get("https://api.instagram.com/v1/media/search?lat=30.369776&lng=-84.273709&access_token=12094397.0dd4aae.b20c2c3cbbc64d25be46af513c9ae5c1", {
         jsonp: "callback"
       }).then(function(data){
         array.forEach(data.data, function(entry, i) {
@@ -87,7 +149,7 @@
       }, function(err){
         // Handle the error condition
       });
-
+      map.add(graphicsLayer);
       
 
         var template = new PopupTemplate({
@@ -114,6 +176,7 @@
           popupTemplate: template
           // definitionExpression: "MTN_BIKING = 'Yes' OR BIKING = 'Yes'"
         });
+        map.add(featureLayer);
 
         featureLayer.then(function() {
           view.animateTo({
@@ -128,18 +191,7 @@
         showLabels: true,
         opacity: 0.9
       });
-		  
-        map = new Map({
-          basemap: "topo",
-          layers: [featureLayer, trailTypeLayer, graphicsLayer]
-        });
-
-        var view = new MapView({
-          container: "mapDiv",
-          center: [-84.291221, 30.4343218],
-          zoom: 11,
-          map: map 
-        });
+		  map.add(trailTypeLayer);
 
       view.popup.viewModel.dockOptions = {
         //Automatically dock the popup when the constraints
@@ -164,6 +216,11 @@
           on(dom.byId("btnTopo"),"click", function() { 
             map.basemap = "topo";
           });
+
+          on(dom.byId("connectStrava"),"click", function() { 
+            console.log("Strava!");
+          });
+
 
           var homeBtn = new Home({
             viewModel: new HomeVM({
@@ -226,6 +283,9 @@
             <button id="btnSatellite" class="btn btn-default">Satellite</button>
             <button id="btnTopo" class="btn btn-default">Topography</button>
           </div>  
+          <div class="btn-group">
+            <img id="connectStrava" src="http://strava.github.io/api/images/ConnectWithStrava.png" border="0">
+          </div>
         </div>
       </div>
     </div>
