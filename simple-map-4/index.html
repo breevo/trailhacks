@@ -22,7 +22,9 @@
       "esri/layers/GraphicsLayer",
       "esri/Graphic",
       "esri/geometry/Point",
+      "esri/geometry/support/webMercatorUtils",
       "esri/symbols/SimpleMarkerSymbol",
+      "esri/symbols/PictureMarkerSymbol",
       "esri/PopupTemplate",
       "esri/widgets/Home",
       "esri/widgets/Home/HomeViewModel",
@@ -40,7 +42,7 @@
 	   
 		  "dijit/layout/BorderContainer", "dijit/layout/ContentPane",
 	      "dojo/domReady!"], function(Map, OpenStreeMapLayer, MapView, SceneView, ArcGISDynamicLayer, array, script, request, GraphicsLayer,
-          Graphic, Point, SimpleMarkerSymbol, PopupTemplate, Home, HomeVM, 
+          Graphic, Point, webMercatorUtils, SimpleMarkerSymbol, PictureMarkerSymbol, PopupTemplate, Home, HomeVM, 
           parser, domStyle, on, dom, FeatureLayer, Extent, domConstruct, 
           SimpleLineSymbol, SimpleFillSymbol, TextSymbol, SimpleRenderer, LabelClass, Color) {
 
@@ -55,12 +57,42 @@
           map: map 
         });
 
+        view.on("click", function(evt){
+          //evt is the event object returned after the event fires
+          
+          //prints the map coordinates of the clicked location
+          console.log("map point: " + evt.mapPoint.latitude + ", " + evt.mapPoint.longitude);
+          //prints the screen coordinates of the clicked location
+          console.log(evt.screenPoint);
+          //the graphic object if a feature is clicked in the view
+          console.log(evt.graphic);
 
-      var stravaLayer = new GraphicsLayer();
-      script.get("https://www.strava.com/api/v3/segments/explore", {
+          if (!evt.graphic) {
+            refreshStravaLayer(view, stravaLayer, evt.mapPoint.latitude, evt.mapPoint.longitude)            
+          }
+        });
+
+
+      
+      function refreshStravaLayer(view, stravaLayer, latitude, longitude) {
+
+          // view.animateTo({
+          //   center: new Point(longitude, latitude),
+          //   scale: view.scale,
+          //   zoom: view.zoom
+          // });
+          var searchBox = view.extent;
+
+          console.log("search box: " + searchBox.xmax + "," + searchBox.xmin + "," + searchBox.ymax + "," + searchBox.ymin);
+          var max = webMercatorUtils.xyToLngLat(searchBox.xmax, searchBox.ymax);
+          var min = webMercatorUtils.xyToLngLat(searchBox.xmin, searchBox.ymin);
+          console.log(" lat/long: " + min[1] + "," + min[0] + "," + max[1] + "," + max[0]);
+
+
+          script.get("https://www.strava.com/api/v3/segments/explore", {
             jsonp: "callback",
             query: {
-                  bounds: "30.277063,-84.511211,30.589059,-84.092121",
+                  bounds: min[1] + "," + min[0] + "," + max[1] + "," + max[0],
                   access_token: "4c4a20fc50ddcf2715f53677ee39a04957159254"
                 }
           }).then(function(data){
@@ -68,18 +100,34 @@
           if (entry.start_latlng) {
              console.log(entry.name, entry.start_latlng[0] + " " + entry.start_latlng[1]);    
              
+             addEntryToStravaLayer(entry, stravaLayer);
+          }
+        });
+        // Do something with the response data
+      }, function(err){
+        // Handle the error condition
+        console.log("doh " + err);
+      });
+
+      }
+
+      function addEntryToStravaLayer(entry, stravaLayer) {
               var point = new Point({
                 latitude: entry.start_latlng[0],
                 longitude: entry.start_latlng[1]
               });
 
               //Create a symbol for drawing the point
-              var markerSymbol = new SimpleMarkerSymbol({
-                color: [226, 119, 40],
-                outline: new SimpleLineSymbol({
-                  color: [255, 255, 255],
-                  width: 2
-                })
+              // var markerSymbol = new SimpleMarkerSymbol({
+              //   color: [226, 119, 40],
+              //   outline: new SimpleLineSymbol({
+              //     color: [255, 255, 255],
+              //     width: 2
+              //   })
+              // });
+
+              var markerSymbol = new PictureMarkerSymbol({
+                url: "http://labs.strava.com/favicon-16x16.png"
               });
 
               //Create a graphic and add the geometry and symbol to it
@@ -97,14 +145,11 @@
               });
               console.log("adding point: " + pointGraphic);
               stravaLayer.add(pointGraphic);
-          }
-        });
-        // Do something with the response data
-      }, function(err){
-        // Handle the error condition
-        console.log("doh " + err);
-      });
-      map.add(stravaLayer);
+      }
+
+      var stravaLayer = new GraphicsLayer();
+      //refreshStravaLayer(view, stravaLayer, 30.277063, -84.511211);
+      map.add(stravaLayer, 1);
 
       var graphicsLayer = new GraphicsLayer();
       script.get("https://api.instagram.com/v1/media/search?lat=30.369776&lng=-84.273709&access_token=12094397.0dd4aae.b20c2c3cbbc64d25be46af513c9ae5c1", {
@@ -118,15 +163,18 @@
                 longitude: entry.location.longitude,
                 latitude: entry.location.latitude
               });
-
-              //Create a symbol for drawing the point
-              var markerSymbol = new SimpleMarkerSymbol({
-                color: [226, 119, 40],
-                outline: new SimpleLineSymbol({
-                  color: [255, 255, 255],
-                  width: 2
-                })
+              
+              var markerSymbol = new PictureMarkerSymbol({
+                url: entry.images.thumbnail.url
               });
+              //Create a symbol for drawing the point
+              // var markerSymbol = new SimpleMarkerSymbol({
+              //   color: [226, 119, 40],
+              //   outline: new SimpleLineSymbol({
+              //     color: [255, 255, 255],
+              //     width: 2
+              //   })
+              // });
 
               //Create a graphic and add the geometry and symbol to it
               var pointGraphic = new Graphic({
@@ -149,7 +197,7 @@
       }, function(err){
         // Handle the error condition
       });
-      map.add(graphicsLayer);
+      map.add(graphicsLayer, 3);
       
 
         var template = new PopupTemplate({
@@ -176,14 +224,7 @@
           popupTemplate: template
           // definitionExpression: "MTN_BIKING = 'Yes' OR BIKING = 'Yes'"
         });
-        map.add(featureLayer);
-
-        featureLayer.then(function() {
-          view.animateTo({
-            center: [-84.291221, 30.4343218],
-            zoom: 12,
-          });
-        });
+        map.add(featureLayer, 0);
 
       var trailTypeLayer = new ArcGISDynamicLayer({
         url: "http://tlcgisinter.leoncountyfl.gov/arcgis/rest/services/Public/TLC_Inter_OverlayTrailahassee_D_WM/MapServer",
@@ -191,7 +232,7 @@
         showLabels: true,
         opacity: 0.9
       });
-		  map.add(trailTypeLayer);
+		  map.add(trailTypeLayer, 2);
 
       view.popup.viewModel.dockOptions = {
         //Automatically dock the popup when the constraints
